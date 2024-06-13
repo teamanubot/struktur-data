@@ -4,7 +4,7 @@ class KelolaTumpukanBuku {
 private:
 	string judul, penulis;
     int tahunTerbit;
-    vector<Buku> tumpukanBuku;
+    stack<Buku> tumpukanBuku;
 
 protected:
     void tampilkanInfoBuku(const Buku& buku) {
@@ -15,14 +15,14 @@ protected:
 
 public:
     void tambahBuku(const Buku& buku) {
-        tumpukanBuku.push_back(buku);
+        tumpukanBuku.push(buku);
         cetak("Buku berhasil ditambahkan ke dalam tumpukan.\n\n\n");
     }
 
     void hapusBuku() {
     	systemClose();
         if (!tumpukanBuku.empty()) {
-            tumpukanBuku.pop_back();
+            tumpukanBuku.pop();
             cetak("Buku paling atas berhasil dihapus dari tumpukan.\n\n\n");
         } else {
             cetak("Tumpukan buku kosong. Tidak ada buku yang bisa dihapus.\n\n\n");
@@ -32,7 +32,7 @@ public:
     void lihatBukuPalingAtas() {
     	systemClose();
         if (!tumpukanBuku.empty()) {
-            Buku bukuPalingAtas = tumpukanBuku.back();
+            Buku bukuPalingAtas = tumpukanBuku.top();
             tampilkanInfoBuku(bukuPalingAtas);
         } else {
             cetak("Tumpukan buku kosong. Tidak ada buku yang bisa dilihat.\n\n\n");

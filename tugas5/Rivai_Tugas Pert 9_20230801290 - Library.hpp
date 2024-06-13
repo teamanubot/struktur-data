@@ -8,7 +8,7 @@
 #include <cctype>
 #include <conio.h>
 #include <windows.h>
-#include <vector>
+#include <stack>
 #include <string>
 #include <sstream>
 #include <iomanip>

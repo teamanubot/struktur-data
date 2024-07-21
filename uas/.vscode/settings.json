@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "*.module": "php",
-        "*.inc": "php",
-        "iostream": "cpp",
-        "ostream": "cpp",
-        "*.tcc": "cpp"
-    }
-}

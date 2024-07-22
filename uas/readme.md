@@ -1,6 +1,6 @@
 # c++ conn db
 1. pada terminal silahkan ketikan : apt-get install libmysqlclient-dev
-2. kita harus mengcompile code kita : g++ -o uas_simple Uas-StrukturData.cc -lmysqlclient
+2. kita harus mengcompile code kita : g++ -o uas_simple uas-main.cc uas-function.cc -lmysqlclient
 3. running hasil compile nya : ./uas_simple
 
 # tools db

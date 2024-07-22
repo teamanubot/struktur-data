@@ -82,9 +82,30 @@ void get_books(MYSQL* conn) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(res))) {
             cout << "ID : " << row[0] << "\nJudul : " << row[1] << "\nPenulis : " << row[2] << "\nKategori : " << row[3] << "\nStatus : " << row[4] << "\nQuantity : " << row[5] << endl;
-            if (row[6]) {
-                cout << "Dipinjam oleh : " << row[6] << endl;
+
+            stringstream borrowers_query;
+            borrowers_query << "SELECT u.username FROM book_borrowers bb JOIN users u ON bb.user_id = u.id WHERE bb.book_id = " << row[0];
+            if (mysql_query(conn, borrowers_query.str().c_str())) {
+                cerr << "QUERY gagal : " << mysql_error(conn) << endl;
+                continue;
             }
+
+            MYSQL_RES* borrowers_res = mysql_store_result(conn);
+            if (borrowers_res == nullptr) {
+                cerr << "mysql_store_result gagal : " << mysql_error(conn) << endl;
+                continue;
+            }
+
+            MYSQL_ROW borrower_row;
+            if (mysql_num_rows(borrowers_res) > 0) {
+                cout << "Dipinjam oleh : \n";
+                while ((borrower_row = mysql_fetch_row(borrowers_res))) {
+                    cout << "- " << borrower_row[0] << endl;
+                }
+                cout << endl;
+            }
+
+            mysql_free_result(borrowers_res);
             cout << endl;
         }
 
@@ -109,9 +130,30 @@ void search_books(MYSQL* conn, const string& keyword) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(res))) {
             cout << "ID : " << row[0] << ", \nJudul : " << row[1] << ", \nPenulis : " << row[2] << ", \nKategori : " << row[3] << ", \nStatus : " << row[4] << ", \nQuantity : " << row[5];
-            if (row[6]) {
-                cout << ", \nDipinjam oleh : " << row[6] << endl;
+
+            stringstream borrowers_query;
+            borrowers_query << "SELECT u.username FROM book_borrowers bb JOIN users u ON bb.user_id = u.id WHERE bb.book_id = " << row[0];
+            if (mysql_query(conn, borrowers_query.str().c_str())) {
+                cerr << "QUERY gagal : " << mysql_error(conn) << endl;
+                continue;
             }
+
+            MYSQL_RES* borrowers_res = mysql_store_result(conn);
+            if (borrowers_res == nullptr) {
+                cerr << "mysql_store_result gagal : " << mysql_error(conn) << endl;
+                continue;
+            }
+
+            MYSQL_ROW borrower_row;
+            if (mysql_num_rows(borrowers_res) > 0) {
+                cout << "Dipinjam oleh : \n";
+                while ((borrower_row = mysql_fetch_row(borrowers_res))) {
+                    cout << "- " << borrower_row[0] << endl;
+                }
+                cout << endl;
+            }
+
+            mysql_free_result(borrowers_res);
             cout << endl;
         }
 
@@ -128,7 +170,7 @@ void borrow_book(MYSQL* conn, int book_id, int user_id) {
         }
 
         stringstream check_query;
-        check_query << "SELECT status, borrowed_by, quantity FROM books WHERE id = " << book_id;
+        check_query << "SELECT status, quantity FROM books WHERE id = " << book_id;
         if (mysql_query(conn, check_query.str().c_str())) {
             cerr << "CHECK gagal : " << mysql_error(conn) << endl;
             return;
@@ -141,14 +183,19 @@ void borrow_book(MYSQL* conn, int book_id, int user_id) {
         }
 
         MYSQL_ROW row = mysql_fetch_row(res);
-        if (row && string(row[0]) == "available" && atoi(row[2]) > 0) {
+        if (row && string(row[0]) == "available" && atoi(row[1]) > 0) {
             stringstream borrow_query;
-            borrow_query << "UPDATE books SET quantity = quantity - 1, borrowed_by = '" << username << "' WHERE id = " << book_id;
+            borrow_query << "UPDATE books SET quantity = quantity - 1 WHERE id = " << book_id;
             if (mysql_query(conn, borrow_query.str().c_str())) {
                 cerr << "BORROW gagal : " << mysql_error(conn) << endl;
             } else {
-                // Update status if quantity is 0
-                if (atoi(row[2]) - 1 == 0) {
+                stringstream insert_borrow_query;
+                insert_borrow_query << "INSERT INTO book_borrowers (book_id, user_id) VALUES (" << book_id << ", " << user_id << ")";
+                if (mysql_query(conn, insert_borrow_query.str().c_str())) {
+                    cerr << "INSERT gagal : " << mysql_error(conn) << endl;
+                }
+
+                if (atoi(row[1]) - 1 == 0) {
                     stringstream status_query;
                     status_query << "UPDATE books SET status = 'unavailable' WHERE id = " << book_id;
                     if (mysql_query(conn, status_query.str().c_str())) {
@@ -158,7 +205,7 @@ void borrow_book(MYSQL* conn, int book_id, int user_id) {
                 cout << "Buku berhasil dipinjam." << endl;
             }
         } else if (row && string(row[0]) == "unavailable") {
-            cout << "Buku sudah dipinjam oleh : " << row[1] << endl;
+            cout << "Buku sudah tidak tersedia." << endl;
         } else {
             cout << "Buku tidak ditemukan." << endl;
         }
@@ -169,14 +216,8 @@ void borrow_book(MYSQL* conn, int book_id, int user_id) {
 
 void return_book(MYSQL* conn, int book_id, int user_id) {
     if (conn) {
-        string username = get_username_by_id(conn, user_id);
-        if (username.empty()) {
-            cout << "Pengguna tidak ditemukan." << endl;
-            return;
-        }
-
         stringstream check_query;
-        check_query << "SELECT status, borrowed_by, quantity FROM books WHERE id = " << book_id;
+        check_query << "SELECT quantity FROM books WHERE id = " << book_id;
         if (mysql_query(conn, check_query.str().c_str())) {
             cerr << "CHECK gagal : " << mysql_error(conn) << endl;
             return;
@@ -189,14 +230,19 @@ void return_book(MYSQL* conn, int book_id, int user_id) {
         }
 
         MYSQL_ROW row = mysql_fetch_row(res);
-        if (row && string(row[1]) == username) {
+        if (row) {
+            stringstream delete_borrow_query;
+            delete_borrow_query << "DELETE FROM book_borrowers WHERE book_id = " << book_id << " AND user_id = " << user_id;
+            if (mysql_query(conn, delete_borrow_query.str().c_str())) {
+                cerr << "DELETE gagal : " << mysql_error(conn) << endl;
+            }
+
             stringstream return_query;
-            return_query << "UPDATE books SET quantity = quantity + 1, borrowed_by = NULL WHERE id = " << book_id;
+            return_query << "UPDATE books SET quantity = quantity + 1 WHERE id = " << book_id;
             if (mysql_query(conn, return_query.str().c_str())) {
                 cerr << "RETURN gagal : " << mysql_error(conn) << endl;
             } else {
-                // Update status if quantity > 0
-                if (atoi(row[2]) + 1 > 0) {
+                if (atoi(row[0]) == 0) {
                     stringstream status_query;
                     status_query << "UPDATE books SET status = 'available' WHERE id = " << book_id;
                     if (mysql_query(conn, status_query.str().c_str())) {
@@ -206,12 +252,13 @@ void return_book(MYSQL* conn, int book_id, int user_id) {
                 cout << "Buku berhasil dikembalikan." << endl;
             }
         } else {
-            cout << "Buku tidak dipinjam oleh anda." << endl;
+            cout << "Buku tidak ditemukan." << endl;
         }
 
         mysql_free_result(res);
     }
 }
+
 
 string get_password() {
     struct termios oldt, newt;
@@ -287,6 +334,7 @@ void admin_menu(MYSQL* conn) {
         cout << "8. Keluar\n";
         cout << "Masukkan pilihan : ";
         cin >> choice;
+        cout << endl;
 
         switch (choice) {
             case 1 : {
@@ -447,6 +495,7 @@ void user_menu(MYSQL* conn, int user_id) {
         cout << "6. Keluar\n";
         cout << "Masukkan pilihan : ";
         cin >> choice;
+        cout << endl;
 
         switch (choice) {
             case 1 : {

@@ -3,6 +3,7 @@
         "*.module": "php",
         "*.inc": "php",
         "iostream": "cpp",
-        "sstream": "cpp"
+        "sstream": "cpp",
+        "ostream": "cpp"
     }
 }

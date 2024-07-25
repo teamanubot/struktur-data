@@ -1,0 +1,18 @@
+services:
+  db_uas_strukturdata:
+    image: mariadb:10.2
+    container_name: db_uas_strukturdata
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "31235:3306"
+    volumes:
+      - ./database/data:/var/lib/mysql
+      - ./database/conf.d:/etc/mysql/conf.d:ro
+    environment:
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 123
+      MYSQL_ROOT_PASSWORD: 123
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    read_only: false
